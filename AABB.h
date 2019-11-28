@@ -118,18 +118,18 @@ struct AABB {
 
 
 __host__ __device__ inline AABB UnionP(const AABB &b, const float3 &p) {
-	return AABB(make_float3(fmin(b.pmin.x, p.x),	fmin(b.pmin.y, p.y), fmin(b.pmin.z, p.z)), 
-				make_float3(fmax(b.pmax.x, p.x),	fmax(b.pmax.y, p.y), fmax(b.pmax.z, p.z)));
+	return AABB(make_float3(fminf(b.pmin.x, p.x),	fminf(b.pmin.y, p.y), fminf(b.pmin.z, p.z)), 
+				make_float3(fmaxf(b.pmax.x, p.x),	fmaxf(b.pmax.y, p.y), fmaxf(b.pmax.z, p.z)));
 }
 
 __host__ __device__ inline AABB UnionB(const AABB &b1, const AABB &b2) {
-	return AABB(make_float3(fmin(b1.pmin.x, b2.pmin.x), fmin(b1.pmin.y, b2.pmin.y), fmin(b1.pmin.z, b2.pmin.z)), 
-				make_float3(fmax(b1.pmax.x, b2.pmax.x), fmax(b1.pmax.y, b2.pmax.y), fmax(b1.pmax.z, b2.pmax.z)));
+	return AABB(make_float3(fminf(b1.pmin.x, b2.pmin.x), fminf(b1.pmin.y, b2.pmin.y), fminf(b1.pmin.z, b2.pmin.z)), 
+				make_float3(fmaxf(b1.pmax.x, b2.pmax.x), fmaxf(b1.pmax.y, b2.pmax.y), fmaxf(b1.pmax.z, b2.pmax.z)));
 }
 
 __host__ __device__ inline AABB Intersection(const AABB &b1, const AABB &b2) {
-	return AABB(make_float3(fmax(b1.pmin.x, b2.pmin.x),	fmax(b1.pmin.y, b2.pmin.y),	fmax(b1.pmin.z, b2.pmin.z)),
-				make_float3(fmin(b1.pmax.x, b2.pmax.x), fmin(b1.pmax.y, b2.pmax.y), fmin(b1.pmax.z, b2.pmax.z)));
+	return AABB(make_float3(fmaxf(b1.pmin.x, b2.pmin.x),	fmaxf(b1.pmin.y, b2.pmin.y),	fmaxf(b1.pmin.z, b2.pmin.z)),
+				make_float3(fminf(b1.pmax.x, b2.pmax.x), fminf(b1.pmax.y, b2.pmax.y), fminf(b1.pmax.z, b2.pmax.z)));
 }
 
 __host__ __device__ inline bool Overlaps(const AABB &b1, const AABB &b2) {
@@ -172,8 +172,8 @@ __host__ __device__ inline bool AABB::Intersect(const float3 &origin, const floa
 	float t4 = (pmax.y - origin.y) * directionInv.y;
 	float t5 = (pmin.z - origin.z) * directionInv.z;
 	float t6 = (pmax.z - origin.z) * directionInv.z;
-	float tmin = fmax(fmax(fmin(t1, t2), fmin(t3, t4)), fmin(t5, t6));
-	float tmax = fmin(fmin(fmax(t1, t2), fmax(t3, t4)), fmax(t5, t6));
+	float tmin = fmaxf(fmaxf(fminf(t1, t2), fminf(t3, t4)), fminf(t5, t6));
+	float tmax = fminf(fminf(fmaxf(t1, t2), fmaxf(t3, t4)), fmaxf(t5, t6));
 	if (tmax <= 0.0f) return false; // box is behind
 	if (tmin > tmax) return false; // ray missed
 

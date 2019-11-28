@@ -49,9 +49,6 @@ typedef unsigned short ushort;
 #define M_PI_4     0.785398163397448309616f
 #define M_1_PI     0.318309886183790671538f
 #define M_2_PI     0.636619772367581343076f
-#define M_2_SQRTPI 1.12837916709551257390f
-#define M_SQRT2    1.41421356237309504880f
-#define M_SQRT1_2  0.707106781186547524401f
 #define M_SQRT1_3  0.577350269189625764509f
 #define M_1_180    0.005555555555555555556f
 
@@ -1503,14 +1500,14 @@ inline __device__ __host__ float4 smoothstep(float4 a, float4 b, float4 x)
 inline __host__ __device__ bool operator<(float3 &u, float3 v)
 
 {
-	return abs(u.x)<abs(v.x) && abs(u.y)<abs(v.y) && abs(u.z)<abs(v.z);
+	return fabsf(u.x)<fabsf(v.x) && fabsf(u.y)<fabsf(v.y) && fabsf(u.z)<fabsf(v.z);
 }
 
 inline __host__ __device__ bool operator>(float3 &u, float3 v)
 
 {
 	
-	return abs(u.x)>abs(v.x) && abs(u.y)>abs(v.y) && abs(u.z)>abs(v.z);
+	return fabsf(u.x)>fabsf(v.x) && fabsf(u.y)>fabsf(v.y) && fabsf(u.z)>fabsf(v.z);
 }
 
 
