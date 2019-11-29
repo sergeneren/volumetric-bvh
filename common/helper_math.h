@@ -32,12 +32,9 @@ typedef unsigned short ushort;
 #define EXIT_WAIVED 2
 #endif
 
-#ifndef __CUDACC__
-#include <math.h>
-#include <float.h>
 
 #define M_EPSILON  0.00001f
-#define M_INF	   FLT_MAX
+#define M_INF	   3.402823466e+38F
 #define M_E        2.71828182845904523536f
 #define M_LOG2E    1.44269504088896340736f
 #define M_LOG10E   0.434294481903251827651f
@@ -51,6 +48,11 @@ typedef unsigned short ushort;
 #define M_2_PI     0.636619772367581343076f
 #define M_SQRT1_3  0.577350269189625764509f
 #define M_1_180    0.005555555555555555556f
+
+#ifndef __CUDACC__
+#include <math.h>
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // host implementations of CUDA functions

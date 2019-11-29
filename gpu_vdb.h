@@ -49,6 +49,7 @@
 #include <openvdb/openvdb.h>
 
 #include "helper_math.h"
+#include "AABB.h"
 
 #define ALIGN(x)	__align__(x)
 
@@ -113,11 +114,29 @@ public:
 
 	// Host functions
 	__host__ bool loadVDB(std::string file_name, std::string density_channel, std::string emission_channel="");
+	
 	__host__ VDB_INFO * get_vdb_info() ;
+	
 	__host__ GPU_VDB * clone();
+
 	// Host and device functions
 	__host__ __device__ mat4 get_xform() const { return this->xform; }
+	
 	__host__ __device__ void set_xform(mat4 &matrix) { this->xform = matrix; }
+	
+	__host__ __device__ AABB Bounds() const {
+		
+		float3 pmin = xform.transpose().transform_point(vdb_info.bmin);
+		float3 pmax = xform.transpose().transform_point(vdb_info.bmax);
+
+		AABB bounding_box(pmin, pmax);
+	
+		return bounding_box;
+
+	}
+
+
+
 
 	VDB_INFO vdb_info;
 private:

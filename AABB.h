@@ -182,5 +182,16 @@ __host__ __device__ inline bool AABB::Intersect(const float3 &origin, const floa
 
 
 
+
+struct AABBUnion {
+	__host__ __device__ AABB operator()(const AABB &b1, const AABB &b2) const {
+		return UnionB(b1, b2);
+	}
+};
+
+
+
+
+
 #endif // !_AABB_H_
 
