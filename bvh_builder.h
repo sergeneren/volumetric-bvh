@@ -61,7 +61,7 @@ class BVH_Builder {
 
 private:
 
-#define BLOCK_SIZE 128
+#define BLOCK_SIZE 32
 
 
 private:
@@ -72,7 +72,7 @@ public:
 	~BVH_Builder() {};
 
 	bvh_error_t init();
-	bvh_error_t build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds, /* optional */ CUdeviceptr vol_ptr=NULL);
+	bvh_error_t build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds);
 
 	BVH bvh;
 

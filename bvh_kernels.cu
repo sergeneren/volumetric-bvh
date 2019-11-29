@@ -161,13 +161,11 @@ extern "C" __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int n
 
 }
 
-extern "C" __global__ void ComputeMortonCodes(GPU_VDB* volumes,
-	int numTriangles,
-	AABB sceneBounds,
-	MortonCode* mortonCodes) {
+extern "C" __global__ void ComputeMortonCodes(const GPU_VDB* volumes, int numTriangles, AABB sceneBounds, MortonCode* mortonCodes) {
 
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
+	
 	if (i < numTriangles) {
 
 		// Compute volume centroid
@@ -181,6 +179,7 @@ extern "C" __global__ void ComputeMortonCodes(GPU_VDB* volumes,
 		// Compute morton code
 		mortonCodes[i] = ComputeMortonCode(x, y, z);
 	}
+	
 }
 
 extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,

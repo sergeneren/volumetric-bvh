@@ -102,14 +102,12 @@ bvh_error_t BVH_Builder::init() {
 
 
 // Build the BVH that will be sent to the render kernel
-bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds, CUdeviceptr vol_ptr) {
+bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds) {
 	
-	if (vol_ptr == NULL) {
+	CUdeviceptr vol_ptr;
 
-		cuMemAlloc(&vol_ptr, sizeof(GPU_VDB) * num_volumes);
-		cuMemcpyHtoD(vol_ptr, volumes, sizeof(GPU_VDB) * num_volumes);
-
-	}
+	cuMemAlloc(&vol_ptr, sizeof(GPU_VDB) * num_volumes);
+	cuMemcpyHtoD(vol_ptr, volumes, sizeof(GPU_VDB) * num_volumes);
 
 
 	int block_size = BLOCK_SIZE;
@@ -150,33 +148,33 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	std::cout << "pmin: " << sceneBounds.pmin.x << ", " << sceneBounds.pmin.y << ", " << sceneBounds.pmin.z << std::endl;
 	std::cout << "pmax: " << sceneBounds.pmax.x << ", " << sceneBounds.pmax.y << ", " << sceneBounds.pmax.z << std::endl;
 	// Pre-process done, start building BVH
-	return BVH_NO_ERR;
+	
 	// Compute Morton codes
-	thrust::host_vector<MortonCode> mortonCodes_h(num_volumes);
-	thrust::device_vector<MortonCode> mortonCodes_d = mortonCodes_h;
 	std::cout << "Computing Morton codes...";
 	cudaEventRecord(start, 0);
-
+	MortonCode *morton_codes = new MortonCode[num_volumes];
+	CUdeviceptr morton_d_pointer;
+	cuMemAlloc(&morton_d_pointer, sizeof(MortonCode) * num_volumes);
+	cuMemcpyHtoD(morton_d_pointer, morton_codes, sizeof(MortonCode) * num_volumes);
+	
 	CUresult result;
 
-	dim3 block(block_size, 1, 1);
-	dim3 grid(grid_size, 1, 1);
-
-	void *morton_params[] = { (void *)&vol_ptr, &num_volumes, &sceneBounds, mortonCodes_d.data().get()};
-	result = cuLaunchKernel(comp_morton_codes_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, morton_params, NULL);
+	void *morton_params[] = { (void *)&vol_ptr, &num_volumes, &sceneBounds, (void*)&morton_d_pointer };
+	result = cuLaunchKernel(comp_morton_codes_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, morton_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
 		printf("Unable to launch comp_morton_codes_func! \n");
 		return BVH_LAUNCH_ERR;
 	}
-
-	mortonCodes_h = mortonCodes_d;
+	
+	
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsed, start, stop);
 	std::cout << " done! Computation took " << elapsed << " ms." << std::endl;
 	total += elapsed;
 
+	/*
 	// Sort triangle indices with Morton code as key
 	thrust::host_vector<int> volumeIDs(num_volumes);
 	thrust::sequence(volumeIDs.begin(), volumeIDs.end());
@@ -204,7 +202,7 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	thrust::device_vector<int> volumeIDs_d = volumeIDs;
 
 	void *radix_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, mortonCodes_d.data().get(), mortonCodes_d.data().get(), volumeIDs_d.data().get(), &num_volumes };
-	result = cuLaunchKernel(build_radix_tree_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, radix_params, NULL);
+	result = cuLaunchKernel(build_radix_tree_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, radix_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
 		printf("Unable to launch build_radix_tree_func! \n");
@@ -223,7 +221,7 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	std::cout << "Building BVH...";
 	cudaEventRecord(start, 0);
 	void *bvh_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, nodeCounters_d.data().get(), (void*)&vol_ptr, volumeIDs_d.data().get(), &num_volumes };
-	result = cuLaunchKernel(construct_bvh_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, bvh_params, NULL);
+	result = cuLaunchKernel(construct_bvh_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, bvh_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
 		printf("Unable to launch construct_bvh_func! \n");
@@ -244,7 +242,7 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 
 
 		void *bvh_debug_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, &num_volumes };
-		result = cuLaunchKernel(debug_bvh_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, bvh_debug_params, NULL);
+		result = cuLaunchKernel(debug_bvh_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, bvh_debug_params, NULL);
 		checkCudaErrors(cudaDeviceSynchronize());
 		if (result != CUDA_SUCCESS) {
 			printf("Unable to launch debug_bvh_func! \n");
@@ -253,6 +251,8 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 
 
 	}
+
+	*/
 
 	return BVH_NO_ERR;
 
