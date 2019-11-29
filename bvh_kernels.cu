@@ -161,8 +161,6 @@ __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int numVolumes) 
 
 }
 
-
-
 __global__ void ComputeMortonCodes(GPU_VDB* volumes,
 	int numTriangles,
 	AABB sceneBounds,
