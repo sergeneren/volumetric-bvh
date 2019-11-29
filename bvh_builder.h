@@ -43,7 +43,6 @@
 #define _BVH_BUILDER_H_
 
 #include <cuda.h>
-#include <vector>
 
 #include "bvh.h"
 #include "gpu_vdb.h"
@@ -73,7 +72,7 @@ public:
 	~BVH_Builder() {};
 
 	bvh_error_t init();
-	bvh_error_t build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBounds);
+	bvh_error_t build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds, /* optional */ CUdeviceptr vol_ptr=NULL);
 
 	BVH bvh;
 

@@ -98,12 +98,18 @@ bvh_error_t BVH_Builder::init() {
 
 
 // Build the BVH that will be sent to the render kernel
-bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBounds) {
+bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds, CUdeviceptr vol_ptr) {
 	
-	int num_volumes = volumes.size();
+	if (vol_ptr == NULL) {
+
+		cuMemAlloc(&vol_ptr, sizeof(GPU_VDB) * num_volumes);
+		cuMemcpyHtoD(vol_ptr, volumes, sizeof(GPU_VDB) * num_volumes);
+
+	}
+
 
 	int block_size = BLOCK_SIZE;
-	int grid_size = (volumes.size() + block_size - 1) / block_size;
+	int grid_size = (num_volumes + block_size - 1) / block_size;
 
 	// Timings 
 	float total = .0f;
@@ -120,7 +126,7 @@ bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBoun
 	printf("Computing triangle bounding boxes...\n");
 	thrust::host_vector<AABB> boundingBoxes(num_volumes);
 	for (int i = 0; i < num_volumes; ++i) {
-		boundingBoxes[i] = volumes.at(i).Bounds();
+		boundingBoxes[i] = volumes[i].Bounds();
 	}
 
 	// Compute scene bounding box
@@ -152,7 +158,7 @@ bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBoun
 	dim3 block(block_size, 1, 1);
 	dim3 grid(grid_size, 1, 1);
 
-	void *morton_params[] = { (void**)volumes.data(), &num_volumes, &sceneBounds, mortonCodes_d.data().get()};
+	void *morton_params[] = { (void *)&vol_ptr, &num_volumes, &sceneBounds, mortonCodes_d.data().get()};
 	result = cuLaunchKernel(comp_morton_codes_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, morton_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
@@ -193,7 +199,7 @@ bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBoun
 
 	thrust::device_vector<int> volumeIDs_d = volumeIDs;
 
-	void *radix_params[] = { (void**)bvh.BVHNodes, (void**)bvh.BVHLeaves, mortonCodes_d.data().get(), mortonCodes_d.data().get(), volumeIDs_d.data().get(), &num_volumes };
+	void *radix_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, mortonCodes_d.data().get(), mortonCodes_d.data().get(), volumeIDs_d.data().get(), &num_volumes };
 	result = cuLaunchKernel(build_radix_tree_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, radix_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
@@ -212,7 +218,7 @@ bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBoun
 
 	std::cout << "Building BVH...";
 	cudaEventRecord(start, 0);
-	void *bvh_params[] = { (void**)bvh.BVHNodes, (void**)bvh.BVHLeaves, nodeCounters_d.data().get(), (void**)volumes.data(), volumeIDs_d.data().get(), &num_volumes };
+	void *bvh_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, nodeCounters_d.data().get(), (void*)&vol_ptr, volumeIDs_d.data().get(), &num_volumes };
 	result = cuLaunchKernel(construct_bvh_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, bvh_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
@@ -233,7 +239,7 @@ bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBoun
 	if (m_debug_bvh) {
 
 
-		void *bvh_debug_params[] = { (void**)bvh.BVHNodes, (void**)bvh.BVHLeaves, &num_volumes };
+		void *bvh_debug_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, &num_volumes };
 		result = cuLaunchKernel(debug_bvh_func, grid.x, 1, 1, block.x, 1, 1, 0, NULL, bvh_debug_params, NULL);
 		checkCudaErrors(cudaDeviceSynchronize());
 		if (result != CUDA_SUCCESS) {
