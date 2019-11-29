@@ -24,6 +24,8 @@ int main(int argc, char** argv) {
 		vdbs.at(i)->set_xform(xform);
 
 	}
+	CUcontext ctx;
+	cuCtxCreate_v2(&ctx, 0, 0);
 
 	bvh_builder.init();
 

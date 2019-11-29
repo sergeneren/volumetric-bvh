@@ -103,7 +103,7 @@ __device__ MortonCode ComputeMortonCode(float x, float y, float z) {
 //////////////////////////////////////////////////////////////////////////
 
 
-__global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int numVolumes) {
+extern "C" __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int numVolumes) {
 
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -161,7 +161,7 @@ __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int numVolumes) 
 
 }
 
-__global__ void ComputeMortonCodes(GPU_VDB* volumes,
+extern "C" __global__ void ComputeMortonCodes(GPU_VDB* volumes,
 	int numTriangles,
 	AABB sceneBounds,
 	MortonCode* mortonCodes) {
@@ -183,7 +183,7 @@ __global__ void ComputeMortonCodes(GPU_VDB* volumes,
 	}
 }
 
-__global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
+extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
 	int* nodeCounter,
 	GPU_VDB* volumes,
 	int* volumeIDs,
@@ -229,7 +229,7 @@ __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
 	}
 }
 
-__global__ void BuildRadixTree(BVHNode* radixTreeNodes,
+extern "C" __global__ void BuildRadixTree(BVHNode* radixTreeNodes,
 	BVHNode* radixTreeLeaves,
 	MortonCode* mortonCodes,
 	int* volumeIds,

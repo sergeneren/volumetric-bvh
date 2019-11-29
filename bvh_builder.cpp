@@ -53,25 +53,29 @@ bvh_error_t BVH_Builder::init_functions(CUmodule &bvh_module) {
 	CUresult error;
 	error = cuModuleGetFunction(&debug_bvh_func, bvh_module, "DebugBVH");
 	if (error != CUDA_SUCCESS) {
-		printf("Unable to bind debug_bvh function!\n");
+		printf("Unable to bind debug_bvh function! ");
+		printf("error code: %i\n", error);
 		return BVH_INIT_FUNC_ERR;
 	}
 
 	error = cuModuleGetFunction(&build_radix_tree_func, bvh_module, "BuildRadixTree");
 	if (error != CUDA_SUCCESS) {
-		printf("Unable to bind BuildRadixTree function!\n");
+		printf("Unable to bind BuildRadixTree function! ");
+		printf("error code: %i\n", error);
 		return BVH_INIT_FUNC_ERR;
 	}
 
 	error = cuModuleGetFunction(&comp_morton_codes_func, bvh_module, "ComputeMortonCodes");
 	if (error != CUDA_SUCCESS) {
-		printf("Unable to bind comp_morton_codes function!\n");
+		printf("Unable to bind comp_morton_codes function! ");
+		printf("error code: %i\n", error);
 		return BVH_INIT_FUNC_ERR;
 	}
 
 	error = cuModuleGetFunction(&construct_bvh_func, bvh_module, "ConstructBVH");
 	if (error != CUDA_SUCCESS) {
-		printf("Unable to bind ConstructBVH function!\n");
+		printf("Unable to bind ConstructBVH function! ");
+		printf("error code: %i\n", error);
 		return BVH_INIT_FUNC_ERR;
 	}
 
@@ -89,7 +93,7 @@ bvh_error_t BVH_Builder::init() {
 	bvh_error_t error_init = init_functions(bvh_module);
 	if (error_init != BVH_NO_ERR) {
 
-		printf("Unable to init functions!");
+		printf("Unable to initialize functions!");
 		return BVH_INIT_ERR;
 
 	}
