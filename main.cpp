@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
 	}
 
 
-	AABB sceneBounds(make_float3(FLT_MIN), make_float3(FLT_MAX));
+	AABB sceneBounds(make_float3(.0f), make_float3(.0f));
 
 	GPU_VDB *volume_pointers = new GPU_VDB[num_volumes];
 	for (int i = 0; i < num_volumes; ++i) {

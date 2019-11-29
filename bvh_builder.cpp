@@ -128,13 +128,7 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	thrust::host_vector<AABB> boundingBoxes(num_volumes);
 	for (int i = 0; i < num_volumes; ++i) {
 		boundingBoxes[i] = volumes[i].Bounds();
-		printf("For bounding box %i \n min_x: %f,min_y: %f,min_z: %f\n max_x: %f, max_y: %f, max_z: %f\n\n", 
-			i, 
-			volumes[i].Bounds().pmin.x, volumes[i].Bounds().pmin.y, volumes[i].Bounds().pmin.z,
-			volumes[i].Bounds().pmax.x, volumes[i].Bounds().pmax.y, volumes[i].Bounds().pmax.z);
 	}
-
-	return BVH_NO_ERR;
 
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
@@ -156,7 +150,7 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	std::cout << "pmin: " << sceneBounds.pmin.x << ", " << sceneBounds.pmin.y << ", " << sceneBounds.pmin.z << std::endl;
 	std::cout << "pmax: " << sceneBounds.pmax.x << ", " << sceneBounds.pmax.y << ", " << sceneBounds.pmax.z << std::endl;
 	// Pre-process done, start building BVH
-
+	return BVH_NO_ERR;
 	// Compute Morton codes
 	thrust::host_vector<MortonCode> mortonCodes_h(num_volumes);
 	thrust::device_vector<MortonCode> mortonCodes_d = mortonCodes_h;

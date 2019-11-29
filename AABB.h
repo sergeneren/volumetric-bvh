@@ -48,8 +48,8 @@
 struct AABB {
 
 	__host__ __device__ AABB() {
-		pmin = make_float3(-M_INF);
-		pmax = make_float3(M_INF);
+		pmin = make_float3(M_INF);
+		pmax = make_float3(-M_INF);
 	}
 	
 	__host__ __device__ AABB(const float3 &p) {
