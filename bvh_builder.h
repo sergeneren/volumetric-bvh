@@ -29,7 +29,7 @@
 // All rights reserved.
 //----------------------------------------------------------------------------------
 // 
-//	Version 1.0: Sergen Eren, 25/10/2019
+//	Version 1.0: Sergen Eren, 29/11/2019
 //
 // File: This is the header file for bvh_builder class that takes a vector of 
 //		 gpu_vdb volumes and creates an accompanying bvh to be sent to render kernel
@@ -73,7 +73,7 @@ public:
 	~BVH_Builder() {};
 
 	bvh_error_t init();
-	bvh_error_t build_bvh(std::vector<GPU_VDB> volumes);
+	bvh_error_t build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBounds);
 
 	BVH bvh;
 
@@ -85,7 +85,6 @@ private:
 	CUfunction debug_bvh_func;
 	CUfunction build_radix_tree_func;
 	CUfunction comp_morton_codes_func;
-	CUfunction comp_bbox_func;
 	CUfunction construct_bvh_func;
 
 };

@@ -183,18 +183,6 @@ __global__ void ComputeMortonCodes(GPU_VDB* volumes,
 	}
 }
 
-
-__global__ void ComputeBoundingBoxes(const GPU_VDB* volumes,
-	int numTriangles,
-	AABB* boundingBoxes) {
-
-	int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-	if (i < numTriangles) {
-		boundingBoxes[i] = volumes[i].Bounds();
-	}
-}
-
 __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
 	int* nodeCounter,
 	GPU_VDB* volumes,
