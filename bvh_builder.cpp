@@ -122,16 +122,22 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	cudaEvent_t start, stop;
 
 	printf("Number of volumes: %i\n", num_volumes);
-	
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
 
 	// Compute bounding boxes 
-	printf("Computing triangle bounding boxes...\n");
+	printf("Computing volume bounding boxes...\n");
 	thrust::host_vector<AABB> boundingBoxes(num_volumes);
 	for (int i = 0; i < num_volumes; ++i) {
 		boundingBoxes[i] = volumes[i].Bounds();
+		printf("For bounding box %i \n min_x: %f,min_y: %f,min_z: %f\n max_x: %f, max_y: %f, max_z: %f\n\n", 
+			i, 
+			volumes[i].Bounds().pmin.x, volumes[i].Bounds().pmin.y, volumes[i].Bounds().pmin.z,
+			volumes[i].Bounds().pmax.x, volumes[i].Bounds().pmax.y, volumes[i].Bounds().pmax.z);
 	}
+
+	return BVH_NO_ERR;
+
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
 
 	// Compute scene bounding box
 	std::cout << "Computing scene bounding box...";
