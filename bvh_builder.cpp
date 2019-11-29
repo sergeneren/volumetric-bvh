@@ -47,6 +47,7 @@
 
 #include "bvh_builder.h"
 
+// Initialize kernel launcher functions 
 bvh_error_t BVH_Builder::init_functions(CUmodule &bvh_module) {
 
 	CUresult error;
@@ -78,7 +79,7 @@ bvh_error_t BVH_Builder::init_functions(CUmodule &bvh_module) {
 
 }
 
-
+// Initialize BVH_builder object with a cuda module pointing to the ptx file 
 bvh_error_t BVH_Builder::init() {
 
 	// Bind precomputation functions from ptx file 
@@ -96,7 +97,7 @@ bvh_error_t BVH_Builder::init() {
 }
 
 
-
+// Build the BVH that will be sent to the render kernel
 bvh_error_t BVH_Builder::build_bvh(std::vector<GPU_VDB> volumes, AABB &sceneBounds) {
 	
 	int num_volumes = volumes.size();
