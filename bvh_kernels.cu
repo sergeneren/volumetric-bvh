@@ -120,6 +120,7 @@ extern "C" __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int n
 				currentNode->boundingBox.pmax.y,
 				currentNode->boundingBox.pmax.z);
 		}
+		
 		//parents:
 		for (int j = 0; j < numVolumes; j++) {
 			BVHNode* currentNode = (BVHLeaves + j)->parent;
@@ -132,7 +133,7 @@ extern "C" __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int n
 				currentNode->boundingBox.pmax.y,
 				currentNode->boundingBox.pmax.z);
 		}
-
+		/*
 		for (int j = 0; j < numVolumes; j++) {
 			BVHNode* currentNode = (BVHLeaves + j)->parent->parent;
 			printf("BBox for parents parent node of triangleIdx %d: pmin: (%f,%f,%f), pmax: (%f,%f,%f)\n",
@@ -156,7 +157,7 @@ extern "C" __global__ void DebugBVH(BVHNode* BVHLeaves, BVHNode* BVHNodes, int n
 				currentNode->boundingBox.pmax.y,
 				currentNode->boundingBox.pmax.z);
 		}
-
+		*/
 	}
 
 }
@@ -182,11 +183,7 @@ extern "C" __global__ void ComputeMortonCodes(const GPU_VDB* volumes, int numTri
 	
 }
 
-extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
-	int* nodeCounter,
-	GPU_VDB* volumes,
-	int* volumeIDs,
-	int numVolumes) {
+extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves, int* nodeCounter, GPU_VDB* volumes, int* volumeIDs, int numVolumes) {
 
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -194,10 +191,8 @@ extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
 		BVHNode* leaf = BVHLeaves + i;
 
 		int volumeIdx = volumeIDs[i];
-
 		// Handle leaf first
 		leaf->volIndex = volumeIdx;
-		//printf("%d, %d\n", leaf->triangleIdx, (BVHLeaves + i)->triangleIdx);
 		leaf->boundingBox = volumes[volumeIdx].Bounds();
 
 		BVHNode* current = leaf->parent;
@@ -214,8 +209,7 @@ extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
 			AABB rightBoundingBox = current->rightChild->boundingBox;
 
 			// Compute current bounding box
-			current->boundingBox = UnionB(leftBoundingBox,
-				rightBoundingBox);
+			current->boundingBox = UnionB(leftBoundingBox, rightBoundingBox);
 
 			// If current is root, return
 			if (current == BVHNodes) {
@@ -228,16 +222,11 @@ extern "C" __global__ void ConstructBVH(BVHNode* BVHNodes, BVHNode* BVHLeaves,
 	}
 }
 
-extern "C" __global__ void BuildRadixTree(BVHNode* radixTreeNodes,
-	BVHNode* radixTreeLeaves,
-	MortonCode* mortonCodes,
-	int* volumeIds,
-	int numVolumes) {
+extern "C" __global__ void BuildRadixTree(BVHNode* radixTreeNodes, BVHNode* radixTreeLeaves, MortonCode* mortonCodes, int* volumeIds, int numVolumes) {
 
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (i < numVolumes - 1) {
-
 		// Run radix tree construction algorithm
 		// Determine direction of the range (+1 or -1)
 		int d = LongestCommonPrefix(i, i + 1, numVolumes, mortonCodes, volumeIds) -

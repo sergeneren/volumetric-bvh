@@ -40,8 +40,8 @@
 #include <thrust/sequence.h>
 #include <thrust/functional.h>
 #include <thrust/remove.h>
+#include <thrust/copy.h>
 #include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 #include <thrust/sort.h>
 
@@ -104,20 +104,16 @@ bvh_error_t BVH_Builder::init() {
 // Build the BVH that will be sent to the render kernel
 bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds) {
 	
-	CUdeviceptr vol_ptr;
+	bvh.BVHNodes = new BVHNode[num_volumes-1];
+	bvh.BVHLeaves = new BVHNode[num_volumes];
 
+	CUdeviceptr vol_ptr;
 	cuMemAlloc(&vol_ptr, sizeof(GPU_VDB) * num_volumes);
 	cuMemcpyHtoD(vol_ptr, volumes, sizeof(GPU_VDB) * num_volumes);
 
 
 	int block_size = BLOCK_SIZE;
 	int grid_size = (num_volumes + block_size - 1) / block_size;
-
-	// Timings 
-	float total = .0f;
-	float elapsed = .0f;
-
-	cudaEvent_t start, stop;
 
 	printf("Number of volumes: %i\n", num_volumes);
 
@@ -128,21 +124,11 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 		boundingBoxes[i] = volumes[i].Bounds();
 	}
 
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-
 	// Compute scene bounding box
 	std::cout << "Computing scene bounding box...";
-	cudaEventRecord(start, 0);
 	
 	sceneBounds = thrust::reduce(boundingBoxes.begin(), boundingBoxes.end(), AABB(), AABBUnion());
-	cudaEventRecord(stop, 0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsed, start, stop);
-	std::cout << " done! Computation took " << elapsed << " ms." << std::endl;
-	total += elapsed;
-	std::cout << "Total pre-computation time for scene was " << total << " ms.\n" << std::endl;
-	total = 0;
+	std::cout << " done! "<< std::endl;
 
 	std::cout << "Scene boundingbox:\n";
 	std::cout << "pmin: " << sceneBounds.pmin.x << ", " << sceneBounds.pmin.y << ", " << sceneBounds.pmin.z << std::endl;
@@ -151,7 +137,6 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	
 	// Compute Morton codes
 	std::cout << "Computing Morton codes...";
-	cudaEventRecord(start, 0);
 	MortonCode *morton_codes = new MortonCode[num_volumes];
 	CUdeviceptr morton_d_pointer;
 	cuMemAlloc(&morton_d_pointer, sizeof(MortonCode) * num_volumes);
@@ -166,20 +151,16 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 		printf("Unable to launch comp_morton_codes_func! \n");
 		return BVH_LAUNCH_ERR;
 	}
+	cuMemcpyDtoH(morton_codes, morton_d_pointer, sizeof(MortonCode) * num_volumes);
 	
-	
-	cudaEventRecord(stop, 0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsed, start, stop);
-	std::cout << " done! Computation took " << elapsed << " ms." << std::endl;
-	total += elapsed;
+	thrust::host_vector<MortonCode> mortonCodes_h(morton_codes, morton_codes+num_volumes);
 
-	/*
+	std::cout << " done!" << std::endl;
+
 	// Sort triangle indices with Morton code as key
 	thrust::host_vector<int> volumeIDs(num_volumes);
 	thrust::sequence(volumeIDs.begin(), volumeIDs.end());
-	std::cout << "Sort triangles...";
-	cudaEventRecord(start, 0);
+	std::cout << "Sorting volumes...";
 
 	try {
 		thrust::sort_by_key(mortonCodes_h.begin(), mortonCodes_h.end(), volumeIDs.begin());
@@ -187,72 +168,71 @@ bvh_error_t BVH_Builder::build_bvh(GPU_VDB *volumes, int num_volumes, AABB &scen
 	catch (thrust::system_error e) {
 		std::cout << "Error inside sort: " << e.what() << std::endl;
 	}
-	cudaEventRecord(stop, 0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsed, start, stop);
-	std::cout << " done! Sorting took " << elapsed << " ms." << std::endl;
-	total += elapsed;
+	std::cout << " done!" << std::endl;
 
+	/*
+	for (int i = 0; i < num_volumes; ++i) {
+		std::cout << mortonCodes_h[i] << "\n";
+	}*/
+
+	
 	// Build radix tree of BVH nodes
-	checkCudaErrors(cudaMalloc((void**)&bvh.BVHNodes, (num_volumes - 1) * sizeof(BVHNode)));
-	checkCudaErrors(cudaMalloc((void**)&bvh.BVHLeaves, num_volumes * sizeof(BVHNode)));
+	CUdeviceptr bvh_nodes_ptr;
+	CUdeviceptr bvh_leaves_ptr;
+	
+	cuMemAlloc(&bvh_nodes_ptr, (num_volumes - 1) * sizeof(BVHNode));
+	cuMemcpyHtoD(bvh_nodes_ptr, &bvh.BVHNodes, (num_volumes - 1) * sizeof(BVHNode));
+
+	cuMemAlloc(&bvh_leaves_ptr, num_volumes * sizeof(BVHNode));
+	cuMemcpyHtoD(bvh_leaves_ptr, &bvh.BVHLeaves, num_volumes * sizeof(BVHNode));
+
 	std::cout << "Building radix tree...";
-	cudaEventRecord(start, 0);
 
-	thrust::device_vector<int> volumeIDs_d = volumeIDs;
+	cuMemcpyHtoD(morton_d_pointer, &mortonCodes_h[0], sizeof(MortonCode) * num_volumes);
+	CUdeviceptr volumeID_ptr;
+	cuMemAlloc(&volumeID_ptr, sizeof(int) * num_volumes);
+	cuMemcpyHtoD(volumeID_ptr, volumeIDs.data(), sizeof(int) * num_volumes);
 
-	void *radix_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, mortonCodes_d.data().get(), mortonCodes_d.data().get(), volumeIDs_d.data().get(), &num_volumes };
+	void *radix_params[] = { (void*)&bvh_nodes_ptr, (void*)&bvh_leaves_ptr, (void*)&morton_d_pointer, (void*)&volumeID_ptr, &num_volumes };
 	result = cuLaunchKernel(build_radix_tree_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, radix_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
 		printf("Unable to launch build_radix_tree_func! \n");
 		return BVH_LAUNCH_ERR;
 	}
-	cudaEventRecord(stop, 0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsed, start, stop);
-	std::cout << " done! Took " << elapsed << " ms." << std::endl;
-	total += elapsed;
+	std::cout << " done!" << std::endl;
 
+	
 	// Build BVH
-	thrust::host_vector<int> nodeCounters_h(num_volumes);
-	thrust::device_vector<int> nodeCounters_d = nodeCounters_h;
+	int *node_counter = new int[num_volumes];
+	CUdeviceptr node_counter_ptr;
+	cuMemAlloc(&node_counter_ptr, sizeof(int) * num_volumes);
+	cuMemcpyHtoD(node_counter_ptr, node_counter, sizeof(int) * num_volumes);
 
 	std::cout << "Building BVH...";
-	cudaEventRecord(start, 0);
-	void *bvh_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, nodeCounters_d.data().get(), (void*)&vol_ptr, volumeIDs_d.data().get(), &num_volumes };
+	void *bvh_params[] = { (void*)&bvh_nodes_ptr, (void*)&bvh_leaves_ptr,  (void*)&node_counter_ptr, (void*)&vol_ptr, (void*)&volumeID_ptr, &num_volumes };
 	result = cuLaunchKernel(construct_bvh_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, bvh_params, NULL);
 	checkCudaErrors(cudaDeviceSynchronize());
 	if (result != CUDA_SUCCESS) {
 		printf("Unable to launch construct_bvh_func! \n");
 		return BVH_LAUNCH_ERR;
 	}
-	cudaEventRecord(stop, 0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&elapsed, start, stop);
-	std::cout << " done! Took " << elapsed << " ms." << std::endl;
-	total += elapsed;
+	std::cout << " done!" << std::endl;
 
-	std::cout << "Total BVH construction time was " << total << " ms.\n" << std::endl;
-
-	cudaEventDestroy(start);
-	cudaEventDestroy(stop);
-
+	
 	if (m_debug_bvh) {
-
-
-		void *bvh_debug_params[] = { (void**)&bvh.BVHNodes, (void**)&bvh.BVHLeaves, &num_volumes };
+		void *bvh_debug_params[] = { (void*)&bvh_nodes_ptr, (void*)&bvh_leaves_ptr, &num_volumes };
 		result = cuLaunchKernel(debug_bvh_func, grid_size, 1, 1, block_size, 1, 1, 0, NULL, bvh_debug_params, NULL);
 		checkCudaErrors(cudaDeviceSynchronize());
 		if (result != CUDA_SUCCESS) {
 			printf("Unable to launch debug_bvh_func! \n");
 			return BVH_LAUNCH_ERR;
 		}
-
-
 	}
 
-	*/
+	cuMemcpyDtoH(bvh.BVHNodes, bvh_nodes_ptr, (num_volumes - 1) * sizeof(BVHNode));
+	cuMemcpyDtoH(bvh.BVHLeaves, bvh_leaves_ptr, num_volumes * sizeof(BVHNode));
+	
 
 	return BVH_NO_ERR;
 
