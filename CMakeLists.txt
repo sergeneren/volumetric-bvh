@@ -34,7 +34,7 @@ file(GLOB CUDA_FILES "*.cu")
 
 source_group(common FILES ${COMMON_FILES})
 
-
+if(false)
 #------------------------------------ CROSS-PLATFORM PTX COMPILE 
 #
 # _COMPILEPTX( SOURCES file1.cu file2.cu TARGET_PATH <path where ptxs should be stored> GENERATED_FILES ptx_sources NVCC_OPTIONS -arch=sm_20)
@@ -137,7 +137,7 @@ _COMPILEPTX ( SOURCES ${CUDA_FILES}
 	GENERATED CUDA_PTX GENPATHS CUDA_PTX_PATHS 
 	INCLUDE "${CMAKE_CURRENT_SOURCE_DIR},${_VCPKG_INCLUDE_DIR},${CMAKE_CURRENT_SOURCE_DIR}/common" 
 	OPTIONS -arch=compute_30 -code=sm_30 --ptxas-options=-v -O3 --use_fast_math --maxrregcount=128)
-
+endif()
 
 add_executable(gpu_bvh ${SOURCE_FILES} ${COMMON_FILES} ${CUDA_FILES})
 

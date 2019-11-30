@@ -43,6 +43,7 @@
 #define _BVH_BUILDER_H_
 
 #include <cuda.h>
+#include <vector>
 
 #include "bvh.h"
 #include "gpu_vdb.h"
@@ -50,8 +51,6 @@
 
 enum bvh_error_t {
 
-	BVH_INIT_ERR,
-	BVH_INIT_FUNC_ERR,
 	BVH_LAUNCH_ERR,
 	BVH_NO_ERR
 };
@@ -59,20 +58,11 @@ enum bvh_error_t {
 
 class BVH_Builder {
 
-private:
-
-#define BLOCK_SIZE 32
-
-
-private:
-	bvh_error_t init_functions(CUmodule &bvh_module);
-
 public:
 	BVH_Builder() {};
-	~BVH_Builder() {};
+	~BVH_Builder() { delete volumes; };
 
-	bvh_error_t init();
-	bvh_error_t build_bvh(GPU_VDB *volumes, int num_volumes, AABB &sceneBounds);
+	bvh_error_t build_bvh(std::vector<GPU_VDB> vdbs, int num_volumes, AABB &sceneBounds);
 
 	BVH bvh;
 
@@ -80,11 +70,7 @@ public:
 
 private:
 
-	CUmodule bvh_module;
-	CUfunction debug_bvh_func;
-	CUfunction build_radix_tree_func;
-	CUfunction comp_morton_codes_func;
-	CUfunction construct_bvh_func;
+	GPU_VDB *volumes;
 
 };
 

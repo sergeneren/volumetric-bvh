@@ -45,9 +45,6 @@
 #include "matrix_math.h"
 #include <string>
 
-// TO-DO: Remove these openvdb headers from this file for nvcc 
-#include <openvdb/openvdb.h>
-
 #include "helper_math.h"
 #include "AABB.h"
 
@@ -135,39 +132,9 @@ public:
 
 	}
 
-
-
-
 	VDB_INFO vdb_info;
 private:
 
-	__host__ void fill_texture(openvdb::GridBase::Ptr gridBase, cudaTextureObject_t &texture);
-	
-	
-
-	__host__ inline void set_vec3s(float3 &fl, openvdb::Vec3s vec) {
-
-		fl.x = vec[0];
-		fl.y = vec[1];
-		fl.z = vec[2];
-	}
-	__host__ inline void set_vec3i(int3 &dim, openvdb::Vec3i vec) {
-
-		dim.x = vec[0];
-		dim.y = vec[1];
-		dim.z = vec[2];
-	}
-
-	__host__ inline void set_xform(mat4 &xform, openvdb::Mat4R matrix) {
-
-		for (int j = 0; j < 4; j++) {
-			for (int i = 0; i < 4; i++) {
-				xform[i][j] = float(matrix(j,i));
-			}
-		}
-
-	}
-	
 	mat4 xform;
 
 };
